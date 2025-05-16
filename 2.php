@@ -103,4 +103,81 @@ function importXml(string $filename): void {
     die();
 }
 
-importXml('temp.xml');
+function exportXml(string $filename, string $categoryCode): void {
+    try {
+        $pdo = new PDO("mysql:host=localhost;dbname=test_samson;charset=utf8", "windygirl");
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } catch (PDOException $e) {
+        die("Connection failed: " . $e->getMessage());
+    }
+
+    $stmt = $pdo->prepare("WITH RECURSIVE category_tree AS (
+                                SELECT id, code FROM a_category WHERE code = :code
+                                UNION SELECT c.id, c.code FROM a_category c
+                                JOIN category_tree ct ON c.parent_id = ct.id)
+                                SELECT id FROM category_tree;");
+    $stmt->execute([":code" => $categoryCode]);
+    $catedoryIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    if (empty($categoryCode)) {
+        echo "Categories not found";
+        return;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT p.id, p.code, p.name FROM a_product p
+        JOIN a_product_category pc ON p.id = pc.product_id
+        WHERE pc.category_id IN (" . implode(",", array_fill(0, count($catedoryIds), "?")). ")");
+
+    $stmt->execute($catedoryIds);
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (empty($products)) {
+        echo "Products not found";
+        return;
+    }
+
+    $xml = new SimpleXMLElement("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Товары/>", 0, false, 'http://www.w3.org/2001/XMLSchema-instance', false);
+
+    foreach ($products as $product) {
+        $productEl = $xml->addChild("Товар");
+        $productEl->addAttribute("Код", $product["code"]);
+        $productEl->addAttribute("Название", $product["name"]);
+
+        $stmt = $pdo->prepare("SELECT type_of_price, price FROM a_price WHERE product_id = :product_id");
+        $stmt->execute([":product_id" => $product["id"]]);
+        $prices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($prices as $price) {
+            $priceEl = $productEl->addChild("Цена", $price["price"]);
+            $priceEl->addAttribute("Тип", $price["type_of_price"]);
+        }
+
+        $stmt = $pdo->prepare("SELECT name, value FROM a_property WHERE product_id = :product_id");
+        $stmt->execute([":product_id" => $product["id"]]);
+        $properties = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $propertiesEl = $productEl->addChild("Свойства");
+        foreach ($properties as $property) {
+            $propertiesEl->addChild($property["name"], $property["value"]);
+        }
+
+        $stmt = $pdo->prepare("SELECT c.name FROM a_category c
+                                JOIN a_product_category pc ON c.id = pc.category_id
+                                WHERE pc.product_id = :product_id");
+        $stmt->execute(["product_id" => $product["id"]]);
+        $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $categoriesEl = $productEl->addChild("Разделы");
+        foreach ($categories as $category) {
+            $categoriesEl->addChild("Раздел", $category["name"]);
+        }
+    }
+
+    $xml->asXML($filename);
+    echo "Data has been exported to $filename";
+
+    $stmt = null;
+    $pdo = null;
+    die();
+}
