@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: 127.0.0.1
--- Время создания: Май 15 2025 г., 16:02
+-- Время создания: Май 16 2025 г., 12:16
 -- Версия сервера: 10.4.32-MariaDB
 -- Версия PHP: 8.2.12
 
@@ -59,6 +59,13 @@ CREATE TABLE `a_product` (
   `name` varchar(50) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Дамп данных таблицы `a_product`
+--
+
+INSERT INTO `a_product` (`id`, `code`, `name`) VALUES
+(1, '201', 'Бумага А4');
+
 -- --------------------------------------------------------
 
 --
@@ -79,7 +86,8 @@ CREATE TABLE `a_product_category` (
 CREATE TABLE `a_property` (
   `id` int(11) NOT NULL,
   `product_id` int(11) NOT NULL,
-  `value` varchar(255) NOT NULL
+  `value` varchar(255) NOT NULL,
+  `name` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -141,7 +149,7 @@ ALTER TABLE `a_price`
 -- AUTO_INCREMENT для таблицы `a_product`
 --
 ALTER TABLE `a_product`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT для таблицы `a_property`
